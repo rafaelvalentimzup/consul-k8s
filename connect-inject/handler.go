@@ -130,16 +130,16 @@ type Handler struct {
 	// k8s namespaces.
 	EnableNamespaces bool
 
-	// AllowK8sNamespacesList is a list of k8s namespaces to explicitly allow for
+	// AllowK8sNamespacesSet is a set of k8s namespaces to explicitly allow for
 	// injection. It supports the special character `*` which indicates that
 	// all k8s namespaces are eligible unless explicitly denied. This filter
 	// is applied before checking pod annotations.
 	AllowK8sNamespacesSet mapset.Set
 
-	// DenyK8sNamespacesList is a list of k8s namespaces to explicitly deny
-	// injection and thus service registration with Consul. An empty list
+	// DenyK8sNamespacesSet is a set of k8s namespaces to explicitly deny
+	// injection and thus service registration with Consul. An empty set
 	// means that no namespaces are removed from consideration. This filter
-	// takes precedence over AllowK8sNamespacesList.
+	// takes precedence over AllowK8sNamespacesSet.
 	DenyK8sNamespacesSet mapset.Set
 
 	// ConsulNamespaceName is the name of the Consul namespace to register all
