@@ -158,11 +158,6 @@ type Handler struct {
 	// `k8s-default` namespace.
 	MirroringPrefix string
 
-	// BindingRuleSelector is only used when mirroring. Because binding rules
-	// are namespaced, a new one is required to be created in each Consul
-	// namespace that is created when mirroring.
-	BindingRuleSelector string
-
 	// Log
 	Log hclog.Logger
 }
@@ -358,19 +353,6 @@ func (h *Handler) Mutate(req *v1beta1.AdmissionRequest) *v1beta1.AdmissionRespon
 				},
 			}
 		}
-
-		// For mirroring, make sure a binding rule exists if ACLs are enabled
-		if h.EnableNSMirroring && h.AuthMethod != "" {
-			if err := h.checkAndCreateBindingRule(h.consulNamespace(pod.Namespace)); err != nil {
-				h.Log.Error("Error checking or creating binding rule", "err", err,
-					"Namespace", h.consulNamespace(pod.Namespace), "Pod Name", pod.Name)
-				return &v1beta1.AdmissionResponse{
-					Result: &metav1.Status{
-						Message: fmt.Sprintf("Error checking or creating binding rule: %s", err),
-					},
-				}
-			}
-		}
 	}
 
 	return resp
@@ -513,36 +495,6 @@ func (h *Handler) checkAndCreateNamespace(ns string) error {
 		}
 
 		_, _, err = h.ConsulClient.Namespaces().Create(&consulNamespace, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (h *Handler) checkAndCreateBindingRule(ns string) error {
-	// Check if a binding rule already exists in this namespace for
-	// this auth method
-	existingRules, _, err := h.ConsulClient.ACL().BindingRuleList(h.AuthMethod, &api.QueryOptions{Namespace: ns})
-	if err != nil {
-		return err
-	}
-
-	// When there are no binding rules for the current namespace and
-	// auth method, one needs to be created
-	if len(existingRules) == 0 {
-		// Note: This description uses the AuthMethod name which differs from binding rules
-		// create in the ACL bootstrap method where the release name is used.
-		abr := api.ACLBindingRule{
-			Description: fmt.Sprintf("Consul %s default binding rule", h.AuthMethod),
-			AuthMethod:  h.AuthMethod,
-			BindType:    api.BindingRuleBindTypeService,
-			BindName:    "${serviceaccount.name}",
-			Selector:    h.BindingRuleSelector,
-			Namespace:   ns,
-		}
-		_, _, err = h.ConsulClient.ACL().BindingRuleCreate(&abr, &api.WriteOptions{Namespace: ns})
 		if err != nil {
 			return err
 		}
